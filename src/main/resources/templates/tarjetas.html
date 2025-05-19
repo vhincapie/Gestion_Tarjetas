@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestion de Tarjetas de Credito</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+    <h1 class="mb-4 text-primary">Gestion de Tarjetas de Credito</h1>
+
+    <!-- Formulario de registro -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">Registrar Nueva Tarjeta</div>
+        <div class="card-body">
+            <form th:action="@{/tarjetas/crear}" method="post" th:object="${nuevaTarjeta}" id="formRegistro" onsubmit="return validarFormulario()">
+                <div class="mb-3">
+                    <label class="form-label">Fecha de Vencimiento (MM/YYYY):</label>
+                    <input type="month" id="fechaInput" class="form-control" required>
+                    <input type="hidden" th:field="*{fechaVencimiento}" id="fechaVencimientoReal" name="fechaVencimiento">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Cupo Total:</label>
+                    <input type="number" step="0.01" min="0.01" th:field="*{cupoTotal}" class="form-control" id="cupoTotal" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Cupo Disponible:</label>
+                    <input type="number" step="0.01" min="0" th:field="*{cupoDisponible}" class="form-control" id="cupoDisponible" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Cliente:</label>
+                    <select th:field="*{cliente.id}" class="form-select" required>
+                        <option value="" disabled selected>Seleccione un cliente</option>
+                        <option th:each="cliente : ${clientes}"
+                                th:value="${cliente.id}"
+                                th:text="${cliente.identificacion + ' - ' + cliente.primerNombre + ' ' + cliente.primerApellido}">
+                        </option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-success">Registrar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Filtro -->
+    <div class="mb-3">
+        <label class="form-label">Filtrar por Cliente:</label>
+        <select id="filtroCliente" class="form-select">
+            <option value="todos">Todos</option>
+            <option th:each="cliente : ${clientes}"
+                    th:value="${cliente.id}"
+                    th:text="${cliente.identificacion + ' - ' + cliente.primerNombre + ' ' + cliente.primerApellido}">
+            </option>
+        </select>
+    </div>
+
+    <!-- Tabla de tarjetas -->
+    <h2 class="mb-3">Listado de Tarjetas</h2>
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle text-center">
+            <thead class="table-secondary">
+            <tr>
+                <th>ID</th>
+                <th>Numero</th>
+                <th>Vencimiento</th>
+                <th>Franquicia</th>
+                <th>Estado</th>
+                <th>Cupo Total</th>
+                <th>Cupo Disponible</th>
+                <th>Cupo Utilizado</th>
+                <th>ID Cliente</th>
+                <th>Identificacion</th>
+                <th>Nombre Completo</th>
+                <th>Correo</th>
+                <th>Modificar Cupo</th>
+                <th>Eliminar</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="tarjeta : ${tarjetas}"
+                th:attr="data-cliente=${tarjeta.cliente.id}"
+                th:classappend="${tarjeta.estado == 'INACTIVO'} ? 'table-danger'">
+                <td th:text="${tarjeta.id}"></td>
+                <td th:text="${tarjeta.numeroTarjeta}"></td>
+                <td th:text="${tarjeta.fechaVencimiento}"></td>
+                <td th:text="${tarjeta.franquicia}"></td>
+                <td th:text="${tarjeta.estado}"></td>
+                <td th:text="${tarjeta.cupoTotal}"></td>
+                <td th:text="${tarjeta.cupoDisponible}"></td>
+                <td th:text="${tarjeta.cupoUtilizado}"></td>
+                <td th:text="${tarjeta.cliente.id}"></td>
+                <td th:text="${tarjeta.cliente.identificacion}"></td>
+                <td th:text="${tarjeta.cliente.primerNombre + ' ' + tarjeta.cliente.segundoNombre + ' ' + tarjeta.cliente.primerApellido + ' ' + tarjeta.cliente.segundoApellido}"></td>
+                <td th:text="${tarjeta.cliente.correo}"></td>
+                <td>
+                    <form th:action="@{'/tarjetas/' + ${tarjeta.id} + '/modificar'}" method="post" class="d-flex" onsubmit="return validarModificacion(this)">
+                        <input type="number" name="nuevoCupoTotal" step="0.01" class="form-control form-control-sm me-2" required>
+                        <button type="submit" class="btn btn-sm btn-warning">Actualizar</button>
+                    </form>
+                </td>
+                <td>
+                    <form th:action="@{'/tarjetas/' + ${tarjeta.id} + '/eliminar'}" method="post">
+                        <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script>
+    window.addEventListener("load", () => {
+        const input = document.getElementById("fechaInput");
+        const hoy = new Date();
+        const mes = (hoy.getMonth() + 1).toString().padStart(2, '0');
+        const anio = hoy.getFullYear();
+        input.min = `${anio}-${mes}`;
+    });
+
+    document.getElementById("filtroCliente").addEventListener("change", function () {
+        const clienteId = this.value;
+        const filas = document.querySelectorAll("table tbody tr");
+
+        filas.forEach(fila => {
+            const idCliente = fila.getAttribute("data-cliente");
+            fila.style.display = (clienteId === "todos" || clienteId === idCliente) ? "" : "none";
+        });
+    });
+
+    function validarFormulario() {
+        const total = parseFloat(document.getElementById("cupoTotal").value);
+        const disponible = parseFloat(document.getElementById("cupoDisponible").value);
+        const fechaInput = document.getElementById("fechaInput").value;
+
+        if (isNaN(total) || isNaN(disponible)) {
+            alert("Los valores de cupo deben ser válidos.");
+            return false;
+        }
+
+        if (total <= 0 || disponible < 0) {
+            alert("Cupo total debe ser mayor a cero y disponible no puede ser negativo.");
+            return false;
+        }
+
+        // AHORA SE PERMITE cupo disponible == cupo total
+        if (disponible > total) {
+            alert("Cupo disponible no puede ser mayor que el total.");
+            return false;
+        }
+
+        if (!fechaInput) {
+            alert("Debe seleccionar una fecha de vencimiento.");
+            return false;
+        }
+
+        const [year, month] = fechaInput.split("-");
+        const vencimiento = `${month}/${year}`;
+        document.getElementById("fechaVencimientoReal").value = vencimiento;
+
+        return true;
+    }
+
+    function validarModificacion(form) {
+        const input = form.querySelector('input[name="nuevoCupoTotal"]');
+        const valor = parseFloat(input.value);
+        if (isNaN(valor) || valor <= 0) {
+            alert("El nuevo cupo debe ser mayor a cero.");
+            return false;
+        }
+        return true;
+    }
+</script>
+
+</body>
+</html>
